@@ -26,7 +26,7 @@ echo '</pre>';
 
 ## Doc
 
-```
+```php
 /**
  * HttpRequest constructor.
  * @param $cookieJar string to store cookies
@@ -88,8 +88,9 @@ public static function absolutizeHtmlUrl($baseUrl, $url);
  * @return \CURLFile
  */
 public static function createFile($path, $mime, $name);
+```
 
-
+```php
 /**
  * HttpResponse constructor.
  * @param $body
