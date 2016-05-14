@@ -10,16 +10,15 @@ composer require salamek/http-request dev-master
 
 ```php
 <?php
-// Sign in to some web page example:
+include('vendor/autoload.php');
+
 $httpRequest =  new Salamek\HttpRequest('cookie-jar.txt');
-list($body, $info, $lastUrl) = $httpRequest->post('http://example.com/sign/in', ['username' => 'my-username', 'password' => 'my-password'])
-echo $body; //Received body
+$httpResponse = $httpRequest->post('http://example.com/sign/in', ['username' => 'my-username', 'password' => 'my-password']);
+
 echo '<pre>';
-print_r($info); //Curl info from curl_getinfo
+print_r($httpResponse);
+print_r($httpResponse->getBody(Salamek\HttpResponse::FORMAT_HTML)); //Xpath
 echo '</pre>';
 
-echo $lastUrl; //Last loaded url where redirections (if any) take us
-
-```
 
 ## Doc
