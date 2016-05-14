@@ -5,6 +5,10 @@
 
 namespace Salamek;
 
+/**
+ * Class HttpRequest
+ * @package Salamek
+ */
 class HttpRequest
 {
     /** @var string */
