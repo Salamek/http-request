@@ -1,0 +1,20 @@
+{
+  "name": "salamek/http-request",
+  "description": "Simple class to perform requests to web apps",
+  "keywords": ["http"],
+  "homepage": "https://github.com/Salamek/http-request",
+  "license": ["BSD-3-Clause", "GPL-3.0"],
+  "authors": [
+    {
+      "name": "Adam Schubet",
+      "homepage": "http://www.salamek.cz"
+    }
+  ],
+  "autoload": {
+    "classmap": ["src/"]
+  },
+  "require": {
+    "php": ">=5.3.0"
+  },
+  "minimum-stability": "dev"
+}
