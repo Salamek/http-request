@@ -4,18 +4,54 @@
  */
 
 use Salamek\HttpRequest;
+use Salamek\HttpResponse;
 
 class RequestTest extends PHPUnit_Framework_TestCase
 {
+    public $httpRequest;
+
+    public function setUp()
+    {
+        $this->httpRequest = new HttpRequest('tmp/cookiejar.txt');
+    }
+
     /**
      * @test
      */
-    public function something()
+    public function getRawBody()
     {
-        $httpRequest = new HttpRequest('cookiejar.txt');
+        $httpResponse = $this->httpRequest->get('https://google.com');
 
-        $httpResponse = $httpRequest->get('https://seznam.cz');
+        $this->assertRegExp('/google/', $httpResponse->getBody());
+    }
 
-        $this->assertNotEmpty($httpResponse->getBody());
+    /**
+     * @test
+     */
+    public function getHtmlBody()
+    {
+        $httpResponse = $this->httpRequest->get('https://google.com');
+
+        $this->assertInstanceOf('DOMXPath', $httpResponse->getBody(HttpResponse::FORMAT_HTML));
+    }
+
+    /**
+     * @test
+     */
+    public function getJsonBody()
+    {
+        $httpResponse = $this->httpRequest->get('https://salamek.cz/params2json.php', ['foo' => 'bar']);
+
+        $this->assertObjectHasAttribute('foo', $httpResponse->getBody(HttpResponse::FORMAT_JSON));
+    }
+
+    /**
+     * @test
+     */
+    public function getPostJsonBody()
+    {
+        $httpResponse = $this->httpRequest->post('https://salamek.cz/params2json.php', ['foo' => 'bar']);
+
+        $this->assertObjectHasAttribute('foo', $httpResponse->getBody(HttpResponse::FORMAT_JSON));
     }
 }
