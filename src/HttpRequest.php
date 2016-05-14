@@ -118,8 +118,26 @@ class HttpRequest
         if (in_array($method, [self::METHOD_POST, self::METHOD_POST]))
         {
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $parameters);
-            //curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-type: application/x-www-form-urlencoded"]);
+
+            //Check if there is a file, if is postfields without http_build_query
+            $containFileUpload = false;
+            foreach ($parameters AS $k => $v)
+            {
+                if ($v instanceof \CURLFile)
+                {
+                    $containFileUpload = true;
+                    break;
+                }
+            }
+
+            if ($containFileUpload)
+            {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $parameters);
+            }
+            else
+            {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($parameters));
+            }
         }
 
         curl_setopt($ch, CURLOPT_HEADER, true);
