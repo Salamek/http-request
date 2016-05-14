@@ -1,4 +1,8 @@
 # http-request
+
+https://travis-ci.org/Salamek/http-request.svg
+[![Build Status](https://travis-ci.org/Salamek/http-request.svg?branch=master)](https://travis-ci.org/Salamek/http-request)
+
 Simple class to perform requests to web apps acting as browser, storing cookies between redirects and so
 
 ## Install
