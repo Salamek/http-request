@@ -3,7 +3,7 @@
  * Copyright (C) 2016 Adam Schubert <adam.schubert@sg1-game.net>.
  */
 
-namespace Extensions\PackageBot;
+namespace Salamek;
 
 class HttpRequest
 {
@@ -18,11 +18,14 @@ class HttpRequest
 
     const METHOD_GET = 'GET';
     const METHOD_POST = 'POST';
+    const METHOD_PUT = 'PUT';
+    const METHOD_DELETE = 'DELETE';
+    const METHOD_OPTIONS = 'OPTIONS';
 
     /**
      * HttpRequest constructor.
-     * @param $cookieJar
-     * @param int $maxRedirections
+     * @param $cookieJar string to store cookies
+     * @param int $maxRedirections redirections allowed (to prevent infinite redirection loop)
      */
     public function __construct($cookieJar, $maxRedirections = 10)
     {
@@ -31,9 +34,10 @@ class HttpRequest
     }
 
     /**
-     * @param $path
-     * @param $mime
-     * @param $name
+     * Creates file string for file upload
+     * @param string $path path to file
+     * @param string $mime mime type of file
+     * @param string $name send name of file
      * @return \CURLFile
      */
     public static function createFile($path, $mime, $name)
@@ -42,7 +46,8 @@ class HttpRequest
     }
 
     /**
-     * @param $maxRedirections
+     * Sets maxRedirections
+     * @param int $maxRedirections max redirections allowed (to prevent infinite redirection loop)
      */
     public function setMaxRedirections($maxRedirections)
     {
@@ -50,13 +55,14 @@ class HttpRequest
     }
 
     /**
-     * @param $loadedUrl
-     * @param $url
-     * @return string
+     * Absolutizes url
+     * @param string $baseUrl base url, usualy url of loaded page
+     * @param string $url url to absolutize, usualy url from loaded page
+     * @return string absolutized url
      */
-    public static function absolutizeHtmlUrl($loadedUrl, $url)
+    public static function absolutizeHtmlUrl($baseUrl, $url)
     {
-        $parsedLoadedUrl = parse_url($loadedUrl);
+        $parsedLoadedUrl = parse_url($baseUrl);
         if (strpos($url, './') === 0)
         {
             $exploded = explode('/', $parsedLoadedUrl['path']);
@@ -85,14 +91,15 @@ class HttpRequest
     }
 
     /**
-     * @param $url
-     * @param $method
-     * @param array $parameters
-     * @return array
+     * Loads url
+     * @param string $url url to load
+     * @param string $method load method METHOD_GET, METHOD_POST, METHOD_PUT, METHOD_DELETE, METHOD_OPTIONS
+     * @param array $parameters request parameters
+     * @return HttpResponse
      */
-    private function request($url, $method, array $parameters = [])
+    private function request($url, $method = self::METHOD_GET, array $parameters = [])
     {
-        if ($method == 'GET' && !empty($parameters))
+        if (in_array($method, [self::METHOD_GET, self::METHOD_DELETE, self::METHOD_OPTIONS]) && !empty($parameters))
         {
             $urlToGo = $url.(strpos($url, '?') !== false ? '&' : '?').http_build_query($parameters);
         }
@@ -104,7 +111,7 @@ class HttpRequest
 
         curl_setopt($ch, CURLOPT_USERAGENT,'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/45.0.2454.101 Chrome/45.0.2454.101 Safari/537.36');
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        if ($method == 'POST')
+        if (in_array($method, [self::METHOD_POST, self::METHOD_POST]))
         {
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $parameters);
@@ -143,12 +150,13 @@ class HttpRequest
             return $this->request($refreshUrl, self::METHOD_GET);
         }
 
-        return [$body, $info, $url];
+        return new HttpResponse($body, $info, $url, $headers);
     }
 
     /**
-     * @param $headers
-     * @return array
+     * Parses headers
+     * @param array $headers headers to parse
+     * @return array parsed headers
      */
     private function parseHeaders(array $headers)
     {
@@ -162,8 +170,7 @@ class HttpRequest
             $matches = [];
             if (preg_match('/^^Location:\s+(\S+)$/i', $header, $matches))
             {
-                list($m, $locationFound) = $matches;
-                $location = $locationFound;
+                $location = $matches[1];
             }
 
             //Start parsing after HTTP code 200
@@ -176,8 +183,7 @@ class HttpRequest
                 $matches = [];
                 if (preg_match('/^(\S+):\s(.+)$/i', $header, $matches))
                 {
-                    list($m, $headerKey, $headerValue) = $matches;
-                    $all[$headerKey] = $headerValue;
+                    $all[$matches[1]] = $matches[2];
                 }
             }
         }
@@ -185,9 +191,10 @@ class HttpRequest
     }
 
     /**
-     * @param $url
-     * @param array $parameters
-     * @return array
+     * Sends GET Request
+     * @param string $url url to load
+     * @param array $parameters get parameters as array
+     * @return HttpResponse
      */
     public function get($url, array $parameters = [])
     {
@@ -196,13 +203,38 @@ class HttpRequest
     }
 
     /**
-     * @param $url
-     * @param array $parameters
-     * @return array
+     * Sends POST Request
+     * @param string $url to send post request
+     * @param array $parameters post parameters
+     * @return HttpResponse
      */
     public function post($url, array $parameters = [])
     {
         $this->redirectionsCount = 0;
         return $this->request($url, self::METHOD_POST, $parameters);
+    }
+
+    /**
+     * Sends PUT Request
+     * @param string $url to send put request
+     * @param array $parameters put parameters
+     * @return HttpResponse
+     */
+    public function put($url, array $parameters = [])
+    {
+        $this->redirectionsCount = 0;
+        return $this->request($url, self::METHOD_PUT, $parameters);
+    }
+
+    /**
+     * Sends DELETE Request
+     * @param string $url to send DELETE request
+     * @param array $parameters DELETE parameters
+     * @return HttpResponse
+     */
+    public function delete($url, array $parameters = [])
+    {
+        $this->redirectionsCount = 0;
+        return $this->request($url, self::METHOD_DELETE, $parameters);
     }
 }
