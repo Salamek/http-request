@@ -150,11 +150,12 @@ class HttpRequest
 
         $result = curl_exec($ch);
         $info = curl_getinfo($ch);
+        $error = curl_error($ch);
         curl_close($ch);
 
         if ($result === false)
         {
-            throw new RequestException(curl_error($ch), $info['http_code']);
+            throw new RequestException($error, $info['http_code']);
         }
         
         $header = substr($result, 0, $info['header_size']);
