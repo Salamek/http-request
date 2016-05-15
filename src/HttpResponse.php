@@ -18,7 +18,28 @@ class HttpResponse
 
     const FORMAT_RAW = 'raw';
     const FORMAT_JSON = 'json';
+    const FORMAT_XML = 'xml';
     const FORMAT_HTML = 'html';
+    const FORMAT_FILE = 'file';
+    const FORMAT_AUTODETECT = 'autodetect';
+
+    private $mimeTypesSupported = [
+        self::FORMAT_RAW => [
+            'application/plain'
+        ],
+        self::FORMAT_JSON => [
+            'application/json'
+        ],
+        self::FORMAT_XML => [
+            'text/xml'
+        ],
+        self::FORMAT_HTML => [
+            'text/html'
+        ],
+        self::FORMAT_FILE => [
+            'application/pdf'
+        ],
+    ];
 
     /**
      * HttpResponse constructor.
@@ -67,10 +88,24 @@ class HttpResponse
         return $this->headers;
     }
 
+    private function autoDetectFormat()
+    {
+        foreach($this->mimeTypesSupported AS $format => $supportedMimes)
+        {
+            if (in_array($this->info['content_type'], $supportedMimes))
+            {
+                return $this->getBody($format);
+            }
+        }
+
+        return $this->getRawBody();
+    }
+
     /**
      * Returns body, formated by $format FORMAT_RAW, FORMAT_JSON, FORMAT_HTML
      * @param string $format
      * @return \DOMXPath|mixed
+     * @throws \Exception
      */
     public function getBody($format = self::FORMAT_RAW)
     {
@@ -81,6 +116,54 @@ class HttpResponse
 
             case self::FORMAT_JSON:
                 $body = $this->parseJson($this->body);
+                break;
+
+            case self::FORMAT_FILE:
+                $body = [
+                    'file' => $this->body,
+                    'size' => $this->info['size_download'],
+                    'mime' => $this->info['content_type']
+                ];
+
+                if (array_key_exists('Content-Disposition', $this->headers['all']))
+                {
+                    $contentDisposition = $this->headers['all']['Content-Disposition'];
+                    $contentDispositionParts = [];
+                    foreach(explode(';', $contentDisposition) AS $part)
+                    {
+                        if (strpos($part, '=') !== false)
+                        {
+                            list($key, $value) = explode('=', $part);
+                            $contentDispositionParts[$key] = trim($value, '"');
+                        }
+                        else
+                        {
+                            $contentDispositionParts[$part] = '';
+                        }
+                    }
+
+                    if (array_key_exists('filename', $contentDispositionParts))
+                    {
+                        $filename = $contentDispositionParts['filename'];
+                        $body['name'] = $filename;
+                        $body['basename'] = $filename;
+                        $body['extension'] = null;
+                        if (strpos($filename, '.') !== false)
+                        {
+                            $body['basename'] = pathinfo($filename, PATHINFO_FILENAME);
+                            $body['extension'] = pathinfo($filename, PATHINFO_EXTENSION);
+                        }
+                    }
+                }
+
+                break;
+
+            case self::FORMAT_XML:
+                throw new \Exception('Not implemented yet, please send PR or issue request to implement this feature');
+                break;
+
+            case self::FORMAT_AUTODETECT:
+                $body = $this->autoDetectFormat();
                 break;
 
             default:
