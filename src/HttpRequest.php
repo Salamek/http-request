@@ -26,6 +26,12 @@ class HttpRequest
     const METHOD_DELETE = 'DELETE';
     const METHOD_OPTIONS = 'OPTIONS';
 
+    const FORMAT_FILE = 'file';
+    const FORMAT_URL = 'form';
+    const FORMAT_JSON = 'json';
+    const FORMAT_JSON_RPC = 'json-rpc';
+    const FORMAT_XML = 'xml';
+
     /**
      * HttpRequest constructor.
      * @param $cookieJar string to store cookies
@@ -96,13 +102,27 @@ class HttpRequest
 
     /**
      * Loads url
-     * @param string $url url to load
-     * @param string $method load method METHOD_GET, METHOD_POST, METHOD_PUT, METHOD_DELETE, METHOD_OPTIONS
-     * @param array $parameters request parameters
+     * @param $url
+     * @param string $method
+     * @param array $parameters
+     * @param string $format
      * @return HttpResponse
+     * @throws RequestException
+     * @throws \Exception
      */
-    private function request($url, $method = self::METHOD_GET, array $parameters = [])
+    private function request($url, $method = self::METHOD_GET, array $parameters = [], $format = self::FORMAT_URL)
     {
+        //Check if there is a file, then force format to FORMAT_FILE
+        foreach ($parameters AS $k => $v)
+        {
+            if ($v instanceof \CURLFile)
+            {
+                $format = self::FORMAT_FILE;
+                break;
+            }
+        }
+
+
         if (in_array($method, [self::METHOD_GET, self::METHOD_DELETE, self::METHOD_OPTIONS]) && !empty($parameters))
         {
             $urlToGo = $url.(strpos($url, '?') !== false ? '&' : '?').http_build_query($parameters);
@@ -115,28 +135,48 @@ class HttpRequest
 
         curl_setopt($ch, CURLOPT_USERAGENT,'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/45.0.2454.101 Chrome/45.0.2454.101 Safari/537.36');
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        if (in_array($method, [self::METHOD_POST, self::METHOD_POST]))
+        if (in_array($method, [self::METHOD_POST, self::METHOD_PUT]))
         {
             curl_setopt($ch, CURLOPT_POST, true);
-
-            //Check if there is a file, if is postfields without http_build_query
-            $containFileUpload = false;
-            foreach ($parameters AS $k => $v)
+            $headers = [];
+            switch ($format)
             {
-                if ($v instanceof \CURLFile)
-                {
-                    $containFileUpload = true;
+                case self::FORMAT_FILE:
+                    $postfields = $parameters;
                     break;
-                }
+
+                case self::FORMAT_XML:
+                    $headers[] = 'Accept: application/xml';
+                    $headers[] = 'Content-Type: application/xml';
+
+                    throw new \Exception('Not yet implemented, fill issue if you need this feature');
+                    break;
+
+                case self::FORMAT_JSON:
+                    $headers[] = 'Accept: application/json';
+                    $headers[] = 'Content-Type: application/json';
+
+                    $postfields = json_encode($parameters);
+                    break;
+
+                case self::FORMAT_JSON_RPC:
+                    $headers[] = 'Accept: application/json-rpc';
+                    $headers[] = 'Content-Type: application/json-rpc';
+
+                    $postfields = json_encode($parameters);
+                    break;
+
+                case self::FORMAT_URL:
+                    $postfields = http_build_query($parameters);
+                    break;
             }
 
-            if ($containFileUpload)
+
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields);
+
+            if (!empty($headers))
             {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $parameters);
-            }
-            else
-            {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($parameters));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             }
         }
 
@@ -235,24 +275,26 @@ class HttpRequest
      * Sends POST Request
      * @param string $url to send post request
      * @param array $parameters post parameters
+     * @param string $format how to format request
      * @return HttpResponse
      */
-    public function post($url, array $parameters = [])
+    public function post($url, array $parameters = [], $format = self::FORMAT_URL)
     {
         $this->redirectionsCount = 0;
-        return $this->request($url, self::METHOD_POST, $parameters);
+        return $this->request($url, self::METHOD_POST, $parameters, $format);
     }
 
     /**
      * Sends PUT Request
      * @param string $url to send put request
      * @param array $parameters put parameters
+     * @param string $format how to format request
      * @return HttpResponse
      */
-    public function put($url, array $parameters = [])
+    public function put($url, array $parameters = [], $format = self::FORMAT_URL)
     {
         $this->redirectionsCount = 0;
-        return $this->request($url, self::METHOD_PUT, $parameters);
+        return $this->request($url, self::METHOD_PUT, $parameters, $format);
     }
 
     /**

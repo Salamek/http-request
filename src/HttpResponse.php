@@ -28,7 +28,8 @@ class HttpResponse
             'application/plain'
         ],
         self::FORMAT_JSON => [
-            'application/json'
+            'application/json',
+            'application/json-rpc'
         ],
         self::FORMAT_XML => [
             'text/xml'
