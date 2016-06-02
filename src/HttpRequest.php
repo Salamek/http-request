@@ -75,18 +75,27 @@ class HttpRequest
         $parsedLoadedUrl = parse_url($baseUrl);
         if (strpos($url, './') === 0)
         {
-            $exploded = explode('/', $parsedLoadedUrl['path']);
-            array_pop($exploded);
-            return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].'/'.implode('/', $exploded).'/'.str_replace('./', '', $url);
+            $exploded = [];
+            if (isset($parsedLoadedUrl['path']))
+            {
+                $exploded = explode('/', $parsedLoadedUrl['path']);
+                array_pop($exploded);
+            }
+            
+            return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].'/'.(!empty($exploded) ? implode('/', $exploded).'/' : '').str_replace('./', '', $url);
         }
         else if (strpos($url, '../') === 0)
         {
-            $exploded = explode('/', $parsedLoadedUrl['path']);
-            for ($i = 0; $i < substr_count($url, '../'); $i++)
+            $exploded = [];
+            if (isset($parsedLoadedUrl['path']))
             {
-                array_pop($exploded);
+                $exploded = explode('/', $parsedLoadedUrl['path']);
+                for ($i = 0; $i < substr_count($url, '../'); $i++)
+                {
+                    array_pop($exploded);
+                }
             }
-            return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].'/'.implode('/', $exploded).'/'.str_replace('../', '', $url);
+            return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].'/'.(!empty($exploded) ? implode('/', $exploded).'/' : '').str_replace('../', '', $url);
         }
         else if (strpos($url, '/') === 0)
         {
@@ -94,9 +103,17 @@ class HttpRequest
         }
         else
         {
-            $exploded = explode('/', trim($parsedLoadedUrl['path'], '/'));
+            if (isset($parsedLoadedUrl['path']))
+            {
+                $exploded = explode('/', trim($parsedLoadedUrl['path'], '/'));
+            }
+            else
+            {
+                $exploded = [];
+            }
+            
             $exploded[] = $url;
-            return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].'/'.implode('/', $exploded);
+            return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].'/'.(!empty($exploded) ? implode('/', $exploded) : '');
         }
     }
 
