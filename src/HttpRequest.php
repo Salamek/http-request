@@ -207,7 +207,7 @@ class HttpRequest
         {
             //We are redirecting
             $this->redirectionsCount++;
-            return $this->request($headers['location'], self::METHOD_GET);
+            return $this->request($this->absolutizeHtmlUrl($url, $headers['location']), self::METHOD_GET);
         }
 
         // Huh, response body contains refresh, lets fallow url in it...
