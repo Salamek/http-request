@@ -20,6 +20,8 @@ class HttpRequest
     /** @var int */
     private $redirectionsCount = 0;
 
+    private $userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36';
+
     const METHOD_GET = 'GET';
     const METHOD_POST = 'POST';
     const METHOD_PUT = 'PUT';
@@ -65,6 +67,15 @@ class HttpRequest
     }
 
     /**
+     * Sets user agent
+     * @param $userAgent
+     */
+    public function setUserAgent($userAgent)
+    {
+        $this->userAgent = $userAgent;
+    }
+
+    /**
      * Absolutizes url
      * @param string $baseUrl base url, usualy url of loaded page
      * @param string $url url to absolutize, usualy url from loaded page
@@ -101,6 +112,11 @@ class HttpRequest
         {
             return $parsedLoadedUrl['scheme'].'://'.$parsedLoadedUrl['host'].$url;
         }
+        else if (strpos($url, 'http') === 0)
+        {
+            //URL is already absolute
+            return $url;
+        }
         else
         {
             if (isset($parsedLoadedUrl['path']))
@@ -123,11 +139,12 @@ class HttpRequest
      * @param string $method
      * @param array $parameters
      * @param string $format
+     * @param string $referrer
      * @return HttpResponse
      * @throws RequestException
      * @throws \Exception
      */
-    private function request($url, $method = self::METHOD_GET, array $parameters = [], $format = self::FORMAT_URL)
+    private function request($url, $method = self::METHOD_GET, array $parameters = [], $format = self::FORMAT_URL, $referrer = null)
     {
         //Check if there is a file, then force format to FORMAT_FILE
         foreach ($parameters AS $k => $v)
@@ -139,7 +156,6 @@ class HttpRequest
             }
         }
 
-
         if (in_array($method, [self::METHOD_GET, self::METHOD_DELETE, self::METHOD_OPTIONS]) && !empty($parameters))
         {
             $urlToGo = $url.(strpos($url, '?') !== false ? '&' : '?').http_build_query($parameters);
@@ -148,14 +164,27 @@ class HttpRequest
         {
             $urlToGo = $url;
         }
+
         $ch = curl_init($urlToGo);
 
-        curl_setopt($ch, CURLOPT_USERAGENT,'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/45.0.2454.101 Chrome/45.0.2454.101 Safari/537.36');
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->userAgent);
+
+        if ($referrer)
+        {
+            curl_setopt($ch, CURLOPT_REFERER, $referrer);
+        }
+        else
+        {
+            curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        }
+
+
+
         if (in_array($method, [self::METHOD_POST, self::METHOD_PUT]))
         {
             curl_setopt($ch, CURLOPT_POST, true);
             $headers = [];
+            $postfields = [];
             switch ($format)
             {
                 case self::FORMAT_FILE:
@@ -224,7 +253,7 @@ class HttpRequest
         {
             //We are redirecting
             $this->redirectionsCount++;
-            return $this->request(self::absolutizeHtmlUrl($url, $headers['location']), self::METHOD_GET);
+            return $this->request(self::absolutizeHtmlUrl($url, $headers['location']), self::METHOD_GET, [], self::FORMAT_URL, $urlToGo);
         }
 
         // Huh, response body contains refresh, lets fallow url in it...
